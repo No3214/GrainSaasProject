@@ -1,0 +1,30 @@
+{
+    "name": "@grain/n8n-workflows",
+    "version": "2.0.0",
+    "description": "Production-ready n8n workflow templates for SaaS automation",
+    "main": "index.js",
+    "bin": {
+        "grain": "./bin/cli.js"
+    },
+    "scripts": {
+        "validate": "node scripts/validate-workflows.js",
+        "scan-secrets": "python scripts/scan_secrets.py",
+        "build": "echo 'Building...'",
+        "prepublishOnly": "npm run validate"
+    },
+    "keywords": [
+        "n8n",
+        "workflow",
+        "automation",
+        "ai",
+        "saas"
+    ],
+    "author": "Antigravity AI",
+    "license": "MIT",
+    "dependencies": {
+        "commander": "^12.0.0",
+        "chalk": "^4.1.2",
+        "ora": "^5.4.1",
+        "node-fetch": "^2.6.7"
+    }
+}

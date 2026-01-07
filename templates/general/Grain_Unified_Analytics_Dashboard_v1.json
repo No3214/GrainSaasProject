@@ -1,0 +1,182 @@
+{
+  "name": "Grain Unified Analytics Dashboard v1",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "tenant_id",
+              "value": "={{ $vars.GRAIN_TENANT_ID || 'default' }}"
+            },
+            {
+              "name": "dry_run",
+              "value": "={{ $vars.GRAIN_DRY_RUN || false }}"
+            },
+            {
+              "name": "webhook_prefix",
+              "value": "={{ $vars.GRAIN_WEBHOOK_PREFIX || '/webhook' }}/{{ $workflow.name.toLowerCase().replace(/[^a-z0-9]/g, '-') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "grain-config-lc4cb94b7",
+      "name": "GRAIN_CONFIG",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -200
+      ],
+      "notesInFlow": true,
+      "notes": "🔧 Central Config"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-dash",
+      "name": "Daily Morning Report",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mock Data Aggregation\nreturn {\n  json: {\n    revenue: { daily: 1500, mrr: 45000, growth: 5 },\n    marketing: { leads: 12, cpl: 25, visitors: 1200 },\n    support: { tickets: 5, avg_response: \"2h\" },\n    product: { active_users: 850, churn_rate: 1.2 }\n  }\n};"
+      },
+      "id": "agg-metrics",
+      "name": "Aggregate Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a Chief Data Officer. Analyze these daily metrics. Identify 1 key trend and 1 area of concern. Write a concise executive summary for Slack (max 5 lines, use emojis)."
+            },
+            {
+              "role": "user",
+              "content": "Metrics: {{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "jsonOutput": false
+      },
+      "id": "ai-insights",
+      "name": "Generate AI Insights",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "executive-briefing",
+        "text": "=📊 **Daily Executive Briefing**\n{{ $json.message.content }}\n\n💸 **Revenue:** ${{ $json.revenue.daily }} (MRR: ${{ $json.revenue.mrr }})\n👥 **Growth:** {{ $json.marketing.leads }} New Leads\n📉 **Churn:** {{ $json.product.churn_rate }}%",
+        "otherOptions": {}
+      },
+      "id": "slack-report",
+      "name": "Send Slack Report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Daily_Stats"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "revenue": "={{ $json.revenue.daily }}",
+            "mrr": "={{ $json.revenue.mrr }}",
+            "active_users": "={{ $json.product.active_users }}"
+          }
+        }
+      },
+      "id": "archive-stats",
+      "name": "Archive to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Morning Report": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Metrics": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Insights",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Archive to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Insights": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,380 @@
+{
+  "name": "Grain Invoice Billing Automation v1",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "tenant_id",
+              "value": "={{ $vars.GRAIN_TENANT_ID || 'default' }}"
+            },
+            {
+              "name": "dry_run",
+              "value": "={{ $vars.GRAIN_DRY_RUN || false }}"
+            },
+            {
+              "name": "webhook_prefix",
+              "value": "={{ $vars.GRAIN_WEBHOOK_PREFIX || '/webhook' }}/{{ $workflow.name.toLowerCase().replace(/[^a-z0-9]/g, '-') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "grain-config-hjfj55171",
+      "name": "GRAIN_CONFIG",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -200
+      ],
+      "notesInFlow": true,
+      "notes": "🔧 Central Config"
+    },
+    {
+      "parameters": {},
+      "id": "webhook-invoice",
+      "name": "Create Invoice",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        400
+      ],
+      "webhookId": "create-invoice"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-dunning",
+      "name": "Daily Dunning Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        200,
+        600
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "resource": "invoice",
+        "operation": "create",
+        "customer": "={{ $json.stripe_customer_id }}",
+        "currency": "={{ $json.currency || 'usd' }}",
+        "invoiceItems": {
+          "values": [
+            {
+              "amount": "={{ $json.amount * 100 }}",
+              "description": "={{ $json.description }}"
+            }
+          ]
+        }
+      },
+      "id": "stripe-invoice",
+      "name": "Create Stripe Invoice",
+      "type": "n8n-nodes-base.stripe",
+      "position": [
+        450,
+        400
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "invoice",
+        "operation": "get",
+        "invoiceId": "={{ $json.invoice_id }}"
+      },
+      "id": "get-invoice-status",
+      "name": "Get Invoice Status",
+      "type": "n8n-nodes-base.stripe",
+      "position": [
+        450,
+        600
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "const invoice = $input.item.json;\nconst dueDate = new Date(invoice.due_date * 1000);\nconst now = new Date();\nconst daysOverdue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));\n\nlet dunningLevel = null;\nif (invoice.status === 'open' && daysOverdue > 0) {\n  if (daysOverdue === 3) dunningLevel = 'gentle';\n  else if (daysOverdue === 7) dunningLevel = 'reminder';\n  else if (daysOverdue === 14) dunningLevel = 'urgent';\n  else if (daysOverdue === 21) dunningLevel = 'final';\n}\n\nreturn {\n  json: {\n    ...invoice,\n    days_overdue: daysOverdue,\n    dunning_level: dunningLevel,\n    should_send: dunningLevel !== null\n  }\n};"
+      },
+      "id": "calc-dunning",
+      "name": "Calculate Dunning",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        650,
+        600
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.should_send }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "should-send",
+      "name": "Should Send?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        850,
+        600
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Tahsilat e-postası yaz. Dunning level'a göre ton ayarla:\n- gentle: Nazik hatırlatma\n- reminder: Net hatırlatma\n- urgent: Acil ödeme talebi\n- final: Son uyarı, hizmet askıya alınacak\n\nJSON: {\"subject\": \"\", \"body\": \"\"}"
+            },
+            {
+              "role": "user",
+              "content": "=Customer: {{ $json.customer_name }}\nAmount: {{ $json.amount_due / 100 }} {{ $json.currency }}\nDays Overdue: {{ $json.days_overdue }}\nLevel: {{ $json.dunning_level }}"
+            }
+          ]
+        }
+      },
+      "id": "ai-dunning-email",
+      "name": "AI Dunning Email",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1050,
+        600
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.customer_email }}",
+        "subject": "={{ $('AI Dunning Email').first().json.message.subject }}",
+        "message": "={{ $('AI Dunning Email').first().json.message.body }}",
+        "options": {}
+      },
+      "id": "send-dunning",
+      "name": "Send Dunning Email",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        1250,
+        600
+      ],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.customer_email }}",
+        "subject": "=Fatura #{{ $json.number }}",
+        "message": "=Merhaba,\n\nEkte {{ $json.amount_due / 100 }} {{ $json.currency }} tutarında faturanız yer almaktadır.\n\nÖdeme linki: {{ $json.hosted_invoice_url }}\n\nSon ödeme tarihi: {{ new Date($json.due_date * 1000).toLocaleDateString('tr-TR') }}\n\nTeşekkürler.",
+        "options": {}
+      },
+      "id": "send-invoice-email",
+      "name": "Send Invoice Email",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        650,
+        400
+      ],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Invoices"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "invoice_id": "={{ $json.id }}",
+            "customer": "={{ $json.customer_name }}",
+            "amount": "={{ $json.amount_due / 100 }}",
+            "status": "={{ $json.status }}",
+            "created_at": "={{ $now.toISO() }}"
+          }
+        }
+      },
+      "id": "log-invoice",
+      "name": "Log Invoice",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        850,
+        400
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "## 💰 Invoice & Billing\nStripe-integrated invoicing with AI-powered dunning emails (gentle → reminder → urgent → final).",
+        "height": 100,
+        "width": 350,
+        "color": 4
+      },
+      "id": "note-overview",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        250
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        450,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "#billing-alerts",
+        "text": "=🚨 Billing Automation Error\n\nNode: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}",
+        "otherOptions": {}
+      },
+      "id": "error-notify",
+      "name": "Error Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        650,
+        800
+      ]
+    }
+  ],
+  "connections": {
+    "Create Invoice": {
+      "main": [
+        [
+          {
+            "node": "Create Stripe Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Stripe Invoice": {
+      "main": [
+        [
+          {
+            "node": "Send Invoice Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Invoice Email": {
+      "main": [
+        [
+          {
+            "node": "Log Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Dunning Check": {
+      "main": [
+        [
+          {
+            "node": "Get Invoice Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Invoice Status": {
+      "main": [
+        [
+          {
+            "node": "Calculate Dunning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Dunning": {
+      "main": [
+        [
+          {
+            "node": "Should Send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send?": {
+      "main": [
+        [
+          {
+            "node": "AI Dunning Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Dunning Email": {
+      "main": [
+        [
+          {
+            "node": "Send Dunning Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "billing"
+    },
+    {
+      "name": "finance"
+    },
+    {
+      "name": "dunning"
+    }
+  ]
+}
