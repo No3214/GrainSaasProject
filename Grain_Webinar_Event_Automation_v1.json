@@ -1,0 +1,164 @@
+{
+    "name": "Grain Webinar Event Automation v1",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "webinar-register",
+                "options": {}
+            },
+            "id": "webhook-register",
+            "name": "Registration",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                250,
+                300
+            ],
+            "webhookId": "webinar-registration"
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": ""
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "Registrations"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "email": "={{ $json.email }}",
+                        "name": "={{ $json.name }}",
+                        "event": "={{ $json.event_name }}",
+                        "registered_at": "={{ $now.toISO() }}"
+                    }
+                }
+            },
+            "id": "save-registration",
+            "name": "Save Registration",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.2,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email }}",
+                "subject": "Kayıt Onaylandı: {{ $json.event_name }}",
+                "message": "Merhaba {{ $json.name }},\n\n{{ $json.event_name }} etkinliğine kaydınız alındı.\n\nTarih: {{ $json.event_date }}\nLink: {{ $json.join_url }}",
+                "options": {}
+            },
+            "id": "confirm-email",
+            "name": "Confirmation Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                750,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 24
+                        }
+                    ]
+                }
+            },
+            "id": "daily-reminder-check",
+            "name": "Daily Reminder Check",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                550
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Check for events happening tomorrow\nconst eventDate = new Date($json.event_date);\nconst now = new Date();\nconst hoursUntil = (eventDate - now) / (1000 * 60 * 60);\nif (hoursUntil > 20 && hoursUntil < 28) {\n  return { json: { ...$json, send_reminder: true } };\n}\nreturn [];"
+            },
+            "id": "calc-reminder",
+            "name": "Check Tomorrow Events",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                500,
+                550
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email }}",
+                "subject": "⏰ Yarın: {{ $json.event_name }}",
+                "message": "Merhaba {{ $json.name }},\n\nYarın {{ $json.event_name }} etkinliğimiz var!\n\nKatılım Linki: {{ $json.join_url }}",
+                "options": {}
+            },
+            "id": "reminder-email",
+            "name": "Reminder Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                750,
+                550
+            ]
+        }
+    ],
+    "connections": {
+        "Registration": {
+            "main": [
+                [
+                    {
+                        "node": "Save Registration",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save Registration": {
+            "main": [
+                [
+                    {
+                        "node": "Confirmation Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Daily Reminder Check": {
+            "main": [
+                [
+                    {
+                        "node": "Check Tomorrow Events",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Tomorrow Events": {
+            "main": [
+                [
+                    {
+                        "node": "Reminder Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

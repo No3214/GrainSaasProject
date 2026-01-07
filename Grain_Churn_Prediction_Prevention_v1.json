@@ -1,0 +1,378 @@
+{
+  "name": "Grain Churn Prediction & Prevention v1",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "daily-churn-check",
+      "name": "Daily Churn Analysis",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 400],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {},
+      "id": "webhook-manual",
+      "name": "Manual Churn Check",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 600],
+      "webhookId": "churn-manual-check"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": { "__rl": true, "mode": "list", "value": "" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "Customer_Data" },
+        "options": { "range": "A:Z" }
+      },
+      "id": "get-customer-data",
+      "name": "Get Customer Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [450, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.ANALYTICS_API_URL }}/users/engagement",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "date_from", "value": "={{ $now.minus({days: 30}).format('YYYY-MM-DD') }}" },
+            { "name": "date_to", "value": "={{ $now.format('YYYY-MM-DD') }}" }
+          ]
+        }
+      },
+      "id": "get-usage-data",
+      "name": "Get Usage Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 600],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.STRIPE_API_URL }}/v1/customers",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit", "value": "100" }
+          ]
+        }
+      },
+      "id": "get-payment-data",
+      "name": "Get Payment History",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 800],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPPORT_API_URL }}/tickets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "created_since", "value": "={{ $now.minus({days: 90}).format('YYYY-MM-DD') }}" }
+          ]
+        }
+      },
+      "id": "get-support-tickets",
+      "name": "Get Support Tickets",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 1000],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge and normalize all customer data\nconst customerData = $('Get Customer Data').all().map(c => c.json);\nconst usageData = $('Get Usage Analytics').first()?.json?.users || [];\nconst paymentData = $('Get Payment History').first()?.json?.data || [];\nconst supportData = $('Get Support Tickets').first()?.json?.tickets || [];\n\n// Create unified customer profiles\nconst profiles = customerData.map(customer => {\n  const customerId = customer.customer_id || customer.id;\n  \n  // Find related usage data\n  const usage = usageData.find(u => u.customer_id === customerId) || {};\n  \n  // Find related payment data\n  const payments = paymentData.find(p => p.id === customerId || p.email === customer.email) || {};\n  \n  // Count support tickets\n  const tickets = supportData.filter(t => t.customer_id === customerId || t.email === customer.email);\n  const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'pending');\n  const escalatedTickets = tickets.filter(t => t.priority === 'high' || t.priority === 'urgent');\n  \n  return {\n    customer_id: customerId,\n    email: customer.email,\n    name: customer.name || customer.company_name,\n    plan: customer.plan || 'unknown',\n    mrr: parseFloat(customer.mrr || 0),\n    signup_date: customer.signup_date || customer.created_at,\n    last_login: usage.last_activity || customer.last_login,\n    \n    // Engagement metrics\n    logins_last_30d: usage.login_count || 0,\n    features_used: usage.features_used || 0,\n    active_days: usage.active_days || 0,\n    session_duration_avg: usage.avg_session_minutes || 0,\n    \n    // Payment health\n    payment_failures: payments.invoice_settings?.default_payment_method ? 0 : 1,\n    days_past_due: payments.delinquent ? 30 : 0,\n    discount_applied: payments.discount ? true : false,\n    \n    // Support metrics\n    total_tickets_90d: tickets.length,\n    open_tickets: openTickets.length,\n    escalated_tickets: escalatedTickets.length,\n    avg_response_satisfaction: tickets.reduce((sum, t) => sum + (t.satisfaction || 3), 0) / Math.max(tickets.length, 1),\n    \n    // Derived metrics\n    days_since_signup: Math.floor((new Date() - new Date(customer.signup_date || customer.created_at)) / (1000 * 60 * 60 * 24)),\n    days_since_login: usage.last_activity ? Math.floor((new Date() - new Date(usage.last_activity)) / (1000 * 60 * 60 * 24)) : 999\n  };\n});\n\nreturn profiles.map(p => ({ json: p }));"
+      },
+      "id": "merge-customer-data",
+      "name": "Merge All Data Sources",
+      "type": "n8n-nodes-base.code",
+      "position": [700, 600],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate Health Score (0-100) for each customer\nconst customer = $input.item.json;\n\n// Scoring weights\nconst weights = {\n  engagement: 0.35,\n  payment: 0.25,\n  support: 0.20,\n  tenure: 0.10,\n  growth: 0.10\n};\n\n// Engagement Score (0-100)\nlet engagementScore = 0;\nif (customer.days_since_login <= 3) engagementScore += 40;\nelse if (customer.days_since_login <= 7) engagementScore += 30;\nelse if (customer.days_since_login <= 14) engagementScore += 15;\nelse if (customer.days_since_login <= 30) engagementScore += 5;\n\nengagementScore += Math.min(customer.logins_last_30d * 2, 30);\nengagementScore += Math.min(customer.features_used * 3, 30);\n\n// Payment Score (0-100)\nlet paymentScore = 100;\npaymentScore -= customer.payment_failures * 30;\npaymentScore -= customer.days_past_due;\nif (customer.discount_applied) paymentScore -= 10;\npaymentScore = Math.max(0, paymentScore);\n\n// Support Score (0-100) - fewer issues = higher score\nlet supportScore = 100;\nsupportScore -= customer.open_tickets * 15;\nsupportScore -= customer.escalated_tickets * 20;\nsupportScore -= Math.min(customer.total_tickets_90d * 2, 30);\nif (customer.avg_response_satisfaction < 3) supportScore -= 20;\nsupportScore = Math.max(0, supportScore);\n\n// Tenure Score (0-100) - longer tenure = higher score\nlet tenureScore = Math.min(customer.days_since_signup / 3, 100);\n\n// Growth Score (0-100) - based on plan and engagement trend\nlet growthScore = 50;\nif (customer.plan === 'enterprise') growthScore = 90;\nelse if (customer.plan === 'pro') growthScore = 70;\nelse if (customer.plan === 'basic') growthScore = 40;\n\n// Calculate weighted health score\nconst healthScore = Math.round(\n  engagementScore * weights.engagement +\n  paymentScore * weights.payment +\n  supportScore * weights.support +\n  tenureScore * weights.tenure +\n  growthScore * weights.growth\n);\n\n// Determine risk level\nlet riskLevel, riskCategory;\nif (healthScore >= 80) {\n  riskLevel = 'LOW';\n  riskCategory = 'healthy';\n} else if (healthScore >= 60) {\n  riskLevel = 'MEDIUM';\n  riskCategory = 'at_risk';\n} else if (healthScore >= 40) {\n  riskLevel = 'HIGH';\n  riskCategory = 'high_risk';\n} else {\n  riskLevel = 'CRITICAL';\n  riskCategory = 'churning';\n}\n\n// Identify primary churn signals\nconst signals = [];\nif (customer.days_since_login > 14) signals.push('Inactive for ' + customer.days_since_login + ' days');\nif (customer.payment_failures > 0) signals.push('Payment issues detected');\nif (customer.open_tickets > 2) signals.push('Multiple open support tickets');\nif (customer.escalated_tickets > 0) signals.push('Has escalated tickets');\nif (customer.logins_last_30d < 5) signals.push('Low login frequency');\nif (customer.features_used < 3) signals.push('Low feature adoption');\n\nreturn {\n  json: {\n    ...customer,\n    health_score: healthScore,\n    scores: {\n      engagement: Math.round(engagementScore),\n      payment: Math.round(paymentScore),\n      support: Math.round(supportScore),\n      tenure: Math.round(tenureScore),\n      growth: Math.round(growthScore)\n    },\n    risk_level: riskLevel,\n    risk_category: riskCategory,\n    churn_signals: signals,\n    signal_count: signals.length,\n    needs_intervention: healthScore < 60,\n    analyzed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "calculate-health-score",
+      "name": "Calculate Health Score",
+      "type": "n8n-nodes-base.code",
+      "position": [900, 600],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "needs-intervention",
+              "leftValue": "={{ $json.needs_intervention }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-at-risk",
+      "name": "Filter At-Risk Customers",
+      "type": "n8n-nodes-base.filter",
+      "position": [1100, 600],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a customer success AI that creates personalized intervention strategies for at-risk customers. Based on the customer's health metrics and churn signals, recommend specific actions.\n\nFor each customer, provide:\n1. PRIMARY_REASON: The main driver of churn risk\n2. INTERVENTION_TYPE: One of [personal_outreach, discount_offer, feature_training, support_escalation, executive_call, win_back_campaign]\n3. MESSAGE_TEMPLATE: A personalized outreach message (2-3 sentences)\n4. URGENCY: 1-5 scale (5 = immediate action needed)\n5. RECOMMENDED_ACTIONS: List of 2-3 specific next steps\n\nRespond in JSON format."
+            },
+            {
+              "role": "user",
+              "content": "=Analyze this at-risk customer and recommend intervention:\n\nCustomer: {{ $json.name }} ({{ $json.email }})\nPlan: {{ $json.plan }}\nMRR: ${{ $json.mrr }}\nHealth Score: {{ $json.health_score }}/100\nRisk Level: {{ $json.risk_level }}\n\nHealth Breakdown:\n- Engagement: {{ $json.scores.engagement }}/100\n- Payment: {{ $json.scores.payment }}/100\n- Support: {{ $json.scores.support }}/100\n\nChurn Signals:\n{{ $json.churn_signals.join('\\n- ') }}\n\nDays Since Last Login: {{ $json.days_since_login }}\nOpen Support Tickets: {{ $json.open_tickets }}\nLogins Last 30 Days: {{ $json.logins_last_30d }}"
+            }
+          ]
+        },
+        "options": { "temperature": 0.7 }
+      },
+      "id": "ai-intervention-strategy",
+      "name": "AI Intervention Strategy",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [1300, 600],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const customer = $input.item.json;\nconst aiResponse = $('AI Intervention Strategy').first()?.json?.message?.content;\n\nlet strategy;\ntry {\n  strategy = JSON.parse(aiResponse);\n} catch (e) {\n  strategy = {\n    PRIMARY_REASON: 'Low engagement',\n    INTERVENTION_TYPE: 'personal_outreach',\n    MESSAGE_TEMPLATE: `Hi ${customer.name}, we noticed you haven't logged in recently. Is there anything we can help with?`,\n    URGENCY: 3,\n    RECOMMENDED_ACTIONS: ['Send check-in email', 'Schedule call', 'Review support tickets']\n  };\n}\n\nreturn {\n  json: {\n    ...customer,\n    intervention: strategy,\n    intervention_scheduled: false,\n    intervention_created_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "parse-strategy",
+      "name": "Parse Intervention Strategy",
+      "type": "n8n-nodes-base.code",
+      "position": [1500, 600],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $json.intervention.INTERVENTION_TYPE }}", "rightValue": "personal_outreach", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "personal_outreach"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $json.intervention.INTERVENTION_TYPE }}", "rightValue": "discount_offer", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "discount_offer"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $json.intervention.INTERVENTION_TYPE }}", "rightValue": "feature_training", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "feature_training"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $json.intervention.INTERVENTION_TYPE }}", "rightValue": "support_escalation", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "support_escalation"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $json.intervention.INTERVENTION_TYPE }}", "rightValue": "executive_call", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "executive_call"
+            }
+          ],
+          "fallbackOutput": { "renameOutput": true, "outputKey": "default" }
+        }
+      },
+      "id": "route-intervention",
+      "name": "Route by Intervention Type",
+      "type": "n8n-nodes-base.switch",
+      "position": [1700, 600],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=We miss you, {{ $json.name }}!",
+        "message": "={{ $json.intervention.MESSAGE_TEMPLATE }}\n\nIf you have any questions or need assistance, please don't hesitate to reach out.\n\nBest regards,\nCustomer Success Team",
+        "options": {}
+      },
+      "id": "send-personal-email",
+      "name": "Send Personal Outreach",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1900, 300],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.STRIPE_API_URL }}/v1/coupons",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "percent_off", "value": "20" },
+            { "name": "duration", "value": "once" },
+            { "name": "metadata[customer_id]", "value": "={{ $json.customer_id }}" },
+            { "name": "metadata[reason]", "value": "churn_prevention" }
+          ]
+        }
+      },
+      "id": "create-discount",
+      "name": "Create Discount Coupon",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1900, 500],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "calendarId": "={{ $env.CS_CALENDAR_ID }}",
+        "start": "={{ $now.plus({days: 1}).set({hour: 10, minute: 0}).toISO() }}",
+        "end": "={{ $now.plus({days: 1}).set({hour: 10, minute: 30}).toISO() }}",
+        "additionalFields": {
+          "summary": "=Feature Training: {{ $json.name }}",
+          "description": "=Churn prevention training session.\nHealth Score: {{ $json.health_score }}\nRisk: {{ $json.risk_level }}\n\nFocus areas:\n{{ $json.churn_signals.join('\\n- ') }}",
+          "attendees": ["={{ $json.email }}"]
+        }
+      },
+      "id": "schedule-training",
+      "name": "Schedule Training Session",
+      "type": "n8n-nodes-base.googleCalendar",
+      "position": [1900, 700],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "channel": "#support-escalation",
+        "text": "=🚨 *Support Escalation Required*\n\nCustomer: {{ $json.name }} ({{ $json.email }})\nPlan: {{ $json.plan }} | MRR: ${{ $json.mrr }}\nHealth Score: {{ $json.health_score }}/100 | Risk: {{ $json.risk_level }}\n\n*Open Tickets:* {{ $json.open_tickets }}\n*Escalated Tickets:* {{ $json.escalated_tickets }}\n\n*Churn Signals:*\n{{ $json.churn_signals.map(s => '• ' + s).join('\\n') }}\n\n*Recommended Actions:*\n{{ $json.intervention.RECOMMENDED_ACTIONS.map((a, i) => (i+1) + '. ' + a).join('\\n') }}",
+        "otherOptions": {}
+      },
+      "id": "escalate-support",
+      "name": "Escalate to Support Team",
+      "type": "n8n-nodes-base.slack",
+      "position": [1900, 900],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "channel": "#customer-success",
+        "text": "=🔴 *Executive Call Required*\n\nHigh-value customer at risk of churning!\n\nCustomer: {{ $json.name }} ({{ $json.email }})\nPlan: {{ $json.plan }} | MRR: ${{ $json.mrr }}\nHealth Score: {{ $json.health_score }}/100\n\n*Primary Churn Reason:* {{ $json.intervention.PRIMARY_REASON }}\n*Urgency:* {{ $json.intervention.URGENCY }}/5\n\n*Signals:*\n{{ $json.churn_signals.map(s => '• ' + s).join('\\n') }}\n\nPlease schedule executive outreach immediately.",
+        "otherOptions": {}
+      },
+      "id": "executive-alert",
+      "name": "Executive Call Alert",
+      "type": "n8n-nodes-base.slack",
+      "position": [1900, 1100],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "mode": "list", "value": "" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "Churn_Interventions" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "customer_id": "={{ $json.customer_id }}",
+            "customer_name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "plan": "={{ $json.plan }}",
+            "mrr": "={{ $json.mrr }}",
+            "health_score": "={{ $json.health_score }}",
+            "risk_level": "={{ $json.risk_level }}",
+            "intervention_type": "={{ $json.intervention.INTERVENTION_TYPE }}",
+            "primary_reason": "={{ $json.intervention.PRIMARY_REASON }}",
+            "urgency": "={{ $json.intervention.URGENCY }}",
+            "churn_signals": "={{ $json.churn_signals.join('; ') }}",
+            "analyzed_at": "={{ $json.analyzed_at }}",
+            "status": "intervention_sent"
+          }
+        }
+      },
+      "id": "log-intervention",
+      "name": "Log Intervention",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [2100, 600],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "channel": "#churn-alerts",
+        "text": "=📊 *Daily Churn Risk Report*\n\n*Total Customers Analyzed:* {{ $('Get Customer Data').all().length }}\n*At-Risk Customers:* {{ $('Filter At-Risk Customers').all().length }}\n\n*Risk Breakdown:*\n🔴 CRITICAL: {{ $('Filter At-Risk Customers').all().filter(c => c.json.risk_level === 'CRITICAL').length }}\n🟠 HIGH: {{ $('Filter At-Risk Customers').all().filter(c => c.json.risk_level === 'HIGH').length }}\n🟡 MEDIUM: {{ $('Filter At-Risk Customers').all().filter(c => c.json.risk_level === 'MEDIUM').length }}\n\n*Interventions Triggered:* {{ $('Log Intervention').all().length }}\n\n_Full report in Churn_Interventions sheet_",
+        "otherOptions": {}
+      },
+      "id": "daily-summary",
+      "name": "Daily Summary Report",
+      "type": "n8n-nodes-base.slack",
+      "position": [2300, 600],
+      "typeVersion": 2.1
+    }
+  ],
+  "connections": {
+    "Daily Churn Analysis": { "main": [[{ "node": "Get Customer Data", "type": "main", "index": 0 }]] },
+    "Manual Churn Check": { "main": [[{ "node": "Get Customer Data", "type": "main", "index": 0 }]] },
+    "Get Customer Data": { "main": [[{ "node": "Get Usage Analytics", "type": "main", "index": 0 }]] },
+    "Get Usage Analytics": { "main": [[{ "node": "Get Payment History", "type": "main", "index": 0 }]] },
+    "Get Payment History": { "main": [[{ "node": "Get Support Tickets", "type": "main", "index": 0 }]] },
+    "Get Support Tickets": { "main": [[{ "node": "Merge All Data Sources", "type": "main", "index": 0 }]] },
+    "Merge All Data Sources": { "main": [[{ "node": "Calculate Health Score", "type": "main", "index": 0 }]] },
+    "Calculate Health Score": { "main": [[{ "node": "Filter At-Risk Customers", "type": "main", "index": 0 }]] },
+    "Filter At-Risk Customers": { "main": [[{ "node": "AI Intervention Strategy", "type": "main", "index": 0 }]] },
+    "AI Intervention Strategy": { "main": [[{ "node": "Parse Intervention Strategy", "type": "main", "index": 0 }]] },
+    "Parse Intervention Strategy": { "main": [[{ "node": "Route by Intervention Type", "type": "main", "index": 0 }]] },
+    "Route by Intervention Type": {
+      "personal_outreach": [[{ "node": "Send Personal Outreach", "type": "main", "index": 0 }]],
+      "discount_offer": [[{ "node": "Create Discount Coupon", "type": "main", "index": 0 }]],
+      "feature_training": [[{ "node": "Schedule Training Session", "type": "main", "index": 0 }]],
+      "support_escalation": [[{ "node": "Escalate to Support Team", "type": "main", "index": 0 }]],
+      "executive_call": [[{ "node": "Executive Call Alert", "type": "main", "index": 0 }]]
+    },
+    "Send Personal Outreach": { "main": [[{ "node": "Log Intervention", "type": "main", "index": 0 }]] },
+    "Create Discount Coupon": { "main": [[{ "node": "Log Intervention", "type": "main", "index": 0 }]] },
+    "Schedule Training Session": { "main": [[{ "node": "Log Intervention", "type": "main", "index": 0 }]] },
+    "Escalate to Support Team": { "main": [[{ "node": "Log Intervention", "type": "main", "index": 0 }]] },
+    "Executive Call Alert": { "main": [[{ "node": "Log Intervention", "type": "main", "index": 0 }]] },
+    "Log Intervention": { "main": [[{ "node": "Daily Summary Report", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "churn" }, { "name": "retention" }, { "name": "customer-success" }]
+}
