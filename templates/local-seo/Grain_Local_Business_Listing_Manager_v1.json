@@ -1,0 +1,855 @@
+{
+    "name": "Grain Local Business Listing Manager v1",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Hourly Review Check",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "position": [
+                220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "listing-manager",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Manual Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "position": [
+                220,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// İşletme Profil Konfigürasyonu\nconst businessConfig = {\n  business_id: $env.BUSINESS_ID || 'BIZ_001',\n  business_name: $env.BUSINESS_NAME || 'İşletme Adı',\n  business_name_local: $env.BUSINESS_NAME_LOCAL || 'İşletme Adı (Yerel)',\n  \n  contact: {\n    primary_phone: $env.BUSINESS_PHONE || '+90 212 XXX XX XX',\n    whatsapp: $env.BUSINESS_WHATSAPP || '+90 532 XXX XX XX',\n    email: $env.BUSINESS_EMAIL || 'info@isletme.com',\n    website: $env.BUSINESS_WEBSITE || 'https://www.isletme.com'\n  },\n  \n  location: {\n    address: $env.BUSINESS_ADDRESS || 'Örnek Caddesi No: 123',\n    city: $env.BUSINESS_CITY || 'İstanbul',\n    district: $env.BUSINESS_DISTRICT || 'Kadıköy',\n    postal_code: $env.BUSINESS_POSTAL || '34710',\n    coordinates: {\n      lat: parseFloat($env.BUSINESS_LAT) || 40.9876,\n      lng: parseFloat($env.BUSINESS_LNG) || 29.0234\n    }\n  },\n  \n  category: {\n    primary: $env.BUSINESS_CATEGORY || 'restaurant',\n    google_category_id: $env.GOOGLE_CATEGORY_ID || 'gcid:restaurant'\n  },\n  \n  platforms: {\n    google_business_profile: {\n      enabled: true,\n      place_id: $env.GOOGLE_PLACE_ID || '',\n      api_enabled: !!$env.GOOGLE_BUSINESS_API_KEY\n    },\n    tripadvisor: {\n      enabled: true,\n      location_id: $env.TRIPADVISOR_LOCATION_ID || '',\n      api_enabled: !!$env.TRIPADVISOR_API_KEY\n    },\n    yelp: {\n      enabled: true,\n      business_id: $env.YELP_BUSINESS_ID || '',\n      api_enabled: !!$env.YELP_API_KEY\n    },\n    facebook: {\n      enabled: true,\n      page_id: $env.FACEBOOK_PAGE_ID || '',\n      api_enabled: !!$env.FACEBOOK_ACCESS_TOKEN\n    },\n    yemeksepeti: {\n      enabled: $env.YEMEKSEPETI_ENABLED === 'true',\n      restaurant_id: $env.YEMEKSEPETI_ID || ''\n    },\n    foursquare: {\n      enabled: true,\n      venue_id: $env.FOURSQUARE_VENUE_ID || ''\n    },\n    apple_maps: {\n      enabled: true,\n      maps_id: $env.APPLE_MAPS_ID || ''\n    },\n    bing_places: {\n      enabled: true,\n      business_id: $env.BING_BUSINESS_ID || ''\n    },\n    yandex_maps: {\n      enabled: true,\n      org_id: $env.YANDEX_ORG_ID || ''\n    }\n  },\n  \n  review_settings: {\n    auto_respond_positive: true,\n    auto_respond_neutral: true,\n    auto_respond_negative: false,\n    min_rating_for_auto: 4,\n    response_language: 'tr',\n    notify_on_negative: true,\n    negative_threshold: 3\n  },\n  \n  ai_settings: {\n    model: 'gpt-4o',\n    tone: 'professional_friendly',\n    include_emoji: true,\n    signature: $env.RESPONSE_SIGNATURE || 'İşletme Ekibi',\n    owner_signature: $env.OWNER_SIGNATURE || 'İşletme Sahibi'\n  }\n};\n\nreturn [{ json: { config: businessConfig, trigger_type: 'scheduled' } }];"
+            },
+            "id": "load-config",
+            "name": "İşletme Konfigürasyonu",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                440,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://mybusiness.googleapis.com/v4/accounts/{{ $env.GOOGLE_ACCOUNT_ID }}/locations/{{ $env.GOOGLE_LOCATION_ID }}/reviews",
+                "authentication": "oAuth2Api",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    }
+                }
+            },
+            "id": "fetch-google-reviews",
+            "name": "Google Reviews Çek",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                660,
+                200
+            ],
+            "credentials": {
+                "googleBusinessProfileOAuth2Api": {
+                    "id": "google-business-creds",
+                    "name": "Google Business Profile"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "url": "https://api.tripadvisor.com/api/partner/2.0/location/{{ $env.TRIPADVISOR_LOCATION_ID }}/reviews",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    }
+                }
+            },
+            "id": "fetch-tripadvisor-reviews",
+            "name": "TripAdvisor Reviews Çek",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                660,
+                350
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "tripadvisor-creds",
+                    "name": "TripAdvisor API"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "url": "https://api.yelp.com/v3/businesses/{{ $env.YELP_BUSINESS_ID }}/reviews",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {}
+            },
+            "id": "fetch-yelp-reviews",
+            "name": "Yelp Reviews Çek",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                660,
+                500
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "yelp-creds",
+                    "name": "Yelp API"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "url": "https://graph.facebook.com/v18.0/{{ $env.FACEBOOK_PAGE_ID }}/ratings",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {}
+            },
+            "id": "fetch-facebook-reviews",
+            "name": "Facebook Reviews Çek",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                660,
+                650
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "facebook-creds",
+                    "name": "Facebook API"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "jsCode": "// Tüm platformlardan gelen yorumları birleştir ve normalize et\nconst config = $('İşletme Konfigürasyonu').first().json.config;\n\nconst googleReviews = $('Google Reviews Çek').first().json?.reviews || [];\nconst tripAdvisorReviews = $('TripAdvisor Reviews Çek').first().json?.data || [];\nconst yelpReviews = $('Yelp Reviews Çek').first().json?.reviews || [];\nconst facebookReviews = $('Facebook Reviews Çek').first().json?.data || [];\n\n// Normalize fonksiyonu\nfunction normalizeReview(review, platform) {\n  const normalized = {\n    id: '',\n    platform: platform,\n    author_name: '',\n    author_avatar: '',\n    rating: 0,\n    text: '',\n    date: '',\n    language: 'tr',\n    has_response: false,\n    response_text: '',\n    sentiment: 'neutral'\n  };\n  \n  switch(platform) {\n    case 'google':\n      normalized.id = `google_${review.reviewId || review.name}`;\n      normalized.author_name = review.reviewer?.displayName || 'Anonim';\n      normalized.author_avatar = review.reviewer?.profilePhotoUrl || '';\n      normalized.rating = review.starRating === 'FIVE' ? 5 : \n                          review.starRating === 'FOUR' ? 4 :\n                          review.starRating === 'THREE' ? 3 :\n                          review.starRating === 'TWO' ? 2 : 1;\n      normalized.text = review.comment || '';\n      normalized.date = review.createTime || review.updateTime;\n      normalized.has_response = !!review.reviewReply;\n      normalized.response_text = review.reviewReply?.comment || '';\n      break;\n      \n    case 'tripadvisor':\n      normalized.id = `ta_${review.id}`;\n      normalized.author_name = review.user?.username || 'Traveler';\n      normalized.author_avatar = review.user?.avatar?.small || '';\n      normalized.rating = review.rating || 0;\n      normalized.text = review.text || review.title || '';\n      normalized.date = review.published_date;\n      normalized.language = review.lang || 'en';\n      normalized.has_response = !!review.owner_response;\n      normalized.response_text = review.owner_response?.text || '';\n      break;\n      \n    case 'yelp':\n      normalized.id = `yelp_${review.id}`;\n      normalized.author_name = review.user?.name || 'Yelper';\n      normalized.author_avatar = review.user?.image_url || '';\n      normalized.rating = review.rating || 0;\n      normalized.text = review.text || '';\n      normalized.date = review.time_created;\n      normalized.language = 'en';\n      break;\n      \n    case 'facebook':\n      normalized.id = `fb_${review.reviewer?.id || Date.now()}`;\n      normalized.author_name = review.reviewer?.name || 'Facebook User';\n      normalized.rating = review.rating || (review.recommendation_type === 'positive' ? 5 : 2);\n      normalized.text = review.review_text || '';\n      normalized.date = review.created_time;\n      break;\n  }\n  \n  // Sentiment analizi\n  if (normalized.rating >= 4) normalized.sentiment = 'positive';\n  else if (normalized.rating === 3) normalized.sentiment = 'neutral';\n  else normalized.sentiment = 'negative';\n  \n  return normalized;\n}\n\n// Tüm yorumları birleştir\nconst allReviews = [\n  ...googleReviews.map(r => normalizeReview(r, 'google')),\n  ...tripAdvisorReviews.map(r => normalizeReview(r, 'tripadvisor')),\n  ...yelpReviews.map(r => normalizeReview(r, 'yelp')),\n  ...facebookReviews.map(r => normalizeReview(r, 'facebook'))\n];\n\n// Yanıtlanmamış yorumları filtrele\nconst unansweredReviews = allReviews.filter(r => !r.has_response);\n\n// İstatistikler\nconst stats = {\n  total_reviews: allReviews.length,\n  unanswered_count: unansweredReviews.length,\n  avg_rating: allReviews.length > 0 ? \n    (allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length).toFixed(2) : 0,\n  sentiment_breakdown: {\n    positive: allReviews.filter(r => r.sentiment === 'positive').length,\n    neutral: allReviews.filter(r => r.sentiment === 'neutral').length,\n    negative: allReviews.filter(r => r.sentiment === 'negative').length\n  },\n  by_platform: {\n    google: googleReviews.length,\n    tripadvisor: tripAdvisorReviews.length,\n    yelp: yelpReviews.length,\n    facebook: facebookReviews.length\n  }\n};\n\nreturn [{\n  json: {\n    config,\n    all_reviews: allReviews,\n    unanswered_reviews: unansweredReviews,\n    stats,\n    timestamp: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "merge-reviews",
+            "name": "Yorumları Birleştir",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                880,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.unanswered_reviews.length }}",
+                            "operation": "larger",
+                            "value2": 0
+                        }
+                    ]
+                }
+            },
+            "id": "check-unanswered",
+            "name": "Yanıtlanmamış Var mı?",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                1100,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "batchSize": 1,
+                "options": {}
+            },
+            "id": "split-reviews",
+            "name": "Yorumları Ayır",
+            "type": "n8n-nodes-base.splitInBatches",
+            "position": [
+                1320,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const review = $input.first().json;\nconst config = $('Yorumları Birleştir').first().json.config;\n\n// Yanıt gerekiyor mu kontrol et\nconst shouldAutoRespond = \n  (review.sentiment === 'positive' && config.review_settings.auto_respond_positive) ||\n  (review.sentiment === 'neutral' && config.review_settings.auto_respond_neutral);\n\nconst requiresApproval = \n  review.sentiment === 'negative' || \n  review.rating < config.review_settings.min_rating_for_auto;\n\nreturn [{\n  json: {\n    ...review,\n    config,\n    should_auto_respond: shouldAutoRespond,\n    requires_approval: requiresApproval\n  }\n}];"
+            },
+            "id": "process-single-review",
+            "name": "Yorum İşle",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                1540,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "chat",
+                "model": "gpt-4o",
+                "messages": {
+                    "values": [
+                        {
+                            "role": "system",
+                            "content": "={{ `Sen bir işletme yorum yanıtlama uzmanısın. Müşteri yorumlarına profesyonel, samimi ve markanın sesine uygun yanıtlar yazıyorsun.\n\nİşletme Bilgileri:\n- İsim: ${$json.config.business_name}\n- Konum: ${$json.config.location.city}, ${$json.config.location.district}\n- Kategori: ${$json.config.category.primary}\n\nYanıt Kuralları:\n1. Her zaman müşteriye ismiyle hitap et (varsa)\n2. Türk misafirperverliğini yansıt\n3. Pozitif yorumlarda teşekkür et ve tekrar davet et\n4. Nötr yorumlarda geri bildirimi değerlendir ve iyileştirme sözü ver\n5. Negatif yorumlarda özür dile, asla savunmacı olma, çözüm öner\n6. ${$json.config.ai_settings.include_emoji ? 'Uygun yerlerde emoji kullan' : 'Emoji kullanma'}\n7. İmza: ${$json.config.ai_settings.signature}\n8. Ton: ${$json.config.ai_settings.tone}\n9. Dil: ${$json.config.review_settings.response_language === 'tr' ? 'Türkçe' : 'İngilizce'}\n\nYasak kelimeler: indirim, ücretsiz, tazminat, yasal, dava, şikayet\n\nSadece yanıt metnini yaz, başka açıklama ekleme.` }}"
+                        },
+                        {
+                            "role": "user",
+                            "content": "={{ `Platform: ${$json.platform}\nMüşteri: ${$json.author_name}\nPuan: ${$json.rating}/5\nDuygu: ${$json.sentiment}\n\nYorum:\n\"${$json.text}\"\n\nBu yoruma uygun bir yanıt yaz.` }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "temperature": 0.7,
+                    "maxTokens": 300
+                }
+            },
+            "id": "generate-ai-response",
+            "name": "AI Yanıt Oluştur",
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "position": [
+                1760,
+                300
+            ],
+            "credentials": {
+                "openAiApi": {
+                    "id": "openai-creds",
+                    "name": "OpenAI API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $node['Yorum İşle'].json.requires_approval }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "check-approval-needed",
+            "name": "Onay Gerekiyor mu?",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                1980,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_REVIEW_CHANNEL || '#reviews' }}",
+                "text": "={{ ':warning: *Negatif Yorum - Onay Bekliyor*\\n\\n*Platform:* ' + $node['Yorum İşle'].json.platform + '\\n*Müşteri:* ' + $node['Yorum İşle'].json.author_name + '\\n*Puan:* ' + $node['Yorum İşle'].json.rating + '/5\\n\\n*Yorum:*\\n> ' + $node['Yorum İşle'].json.text + '\\n\\n*Önerilen Yanıt:*\\n' + $json.message.content + '\\n\\n_Yanıtı onaylamak için 👍 tepkisi verin_' }}",
+                "otherOptions": {}
+            },
+            "id": "slack-approval",
+            "name": "Slack Onay İste",
+            "type": "n8n-nodes-base.slack",
+            "position": [
+                2200,
+                200
+            ],
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-creds",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const review = $node['Yorum İşle'].first().json;\nconst aiResponse = $input.first().json.message.content;\nconst config = review.config;\n\nreturn [{\n  json: {\n    review_id: review.id,\n    platform: review.platform,\n    author_name: review.author_name,\n    rating: review.rating,\n    original_text: review.text,\n    response_text: aiResponse,\n    responded_at: new Date().toISOString(),\n    responded_by: 'ai_auto',\n    status: 'ready_to_post'\n  }\n}];"
+            },
+            "id": "prepare-auto-response",
+            "name": "Otomatik Yanıt Hazırla",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                2200,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.platform }}",
+                            "value2": "google"
+                        }
+                    ]
+                }
+            },
+            "id": "route-by-platform",
+            "name": "Platforma Göre Yönlendir",
+            "type": "n8n-nodes-base.switch",
+            "position": [
+                2420,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://mybusiness.googleapis.com/v4/{{ $node['Yorum İşle'].json.id.replace('google_', '') }}/reply",
+                "authentication": "oAuth2Api",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "comment",
+                            "value": "={{ $json.response_text }}"
+                        }
+                    ]
+                }
+            },
+            "id": "post-google-response",
+            "name": "Google'a Yanıt Gönder",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                2640,
+                200
+            ],
+            "credentials": {
+                "googleBusinessProfileOAuth2Api": {
+                    "id": "google-business-creds",
+                    "name": "Google Business Profile"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.tripadvisor.com/api/partner/2.0/location/{{ $env.TRIPADVISOR_LOCATION_ID }}/reviews/{{ $node['Yorum İşle'].json.id.replace('ta_', '') }}/response",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "response_text",
+                            "value": "={{ $json.response_text }}"
+                        }
+                    ]
+                }
+            },
+            "id": "post-tripadvisor-response",
+            "name": "TripAdvisor'a Yanıt Gönder",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                2640,
+                350
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "tripadvisor-creds",
+                    "name": "TripAdvisor API"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://graph.facebook.com/v18.0/{{ $node['Yorum İşle'].json.id.replace('fb_', '') }}/comments",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "message",
+                            "value": "={{ $json.response_text }}"
+                        }
+                    ]
+                }
+            },
+            "id": "post-facebook-response",
+            "name": "Facebook'a Yanıt Gönder",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                2640,
+                500
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "facebook-creds",
+                    "name": "Facebook API"
+                }
+            },
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "mode": "id",
+                    "value": "={{ $env.REVIEW_LOG_SHEET_ID }}"
+                },
+                "sheetName": "Yanıtlar",
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "Tarih": "={{ $json.responded_at }}",
+                        "Platform": "={{ $json.platform }}",
+                        "Müşteri": "={{ $json.author_name }}",
+                        "Puan": "={{ $json.rating }}",
+                        "Yorum": "={{ $json.original_text }}",
+                        "Yanıt": "={{ $json.response_text }}",
+                        "Yanıtlayan": "={{ $json.responded_by }}",
+                        "Durum": "={{ $json.status }}"
+                    }
+                }
+            },
+            "id": "log-to-sheets",
+            "name": "Google Sheets Log",
+            "type": "n8n-nodes-base.googleSheets",
+            "position": [
+                2860,
+                400
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-creds",
+                    "name": "Google Sheets"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_REVIEW_CHANNEL || '#reviews' }}",
+                "text": "={{ ':white_check_mark: *Yorum Yanıtlandı*\\n\\n*Platform:* ' + $json.platform + '\\n*Müşteri:* ' + $json.author_name + '\\n*Puan:* ' + $json.rating + '/5\\n\\n*Yanıt:*\\n' + $json.response_text }}",
+                "otherOptions": {}
+            },
+            "id": "slack-notify-success",
+            "name": "Slack Bildirim",
+            "type": "n8n-nodes-base.slack",
+            "position": [
+                3080,
+                400
+            ],
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-creds",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const stats = $('Yorumları Birleştir').first().json.stats;\nconst config = $('Yorumları Birleştir').first().json.config;\n\nconst report = {\n  report_date: new Date().toISOString(),\n  business_name: config.business_name,\n  summary: {\n    total_reviews: stats.total_reviews,\n    average_rating: stats.avg_rating,\n    unanswered: stats.unanswered_count,\n    response_rate: stats.total_reviews > 0 ? \n      ((stats.total_reviews - stats.unanswered_count) / stats.total_reviews * 100).toFixed(1) + '%' : 'N/A'\n  },\n  sentiment: stats.sentiment_breakdown,\n  platforms: stats.by_platform,\n  health_score: calculateHealthScore(stats),\n  recommendations: generateRecommendations(stats)\n};\n\nfunction calculateHealthScore(stats) {\n  let score = 0;\n  \n  // Ortalama puan (max 40 puan)\n  score += (parseFloat(stats.avg_rating) / 5) * 40;\n  \n  // Yanıt oranı (max 30 puan)\n  const responseRate = (stats.total_reviews - stats.unanswered_count) / Math.max(stats.total_reviews, 1);\n  score += responseRate * 30;\n  \n  // Pozitif oran (max 30 puan)\n  const positiveRate = stats.sentiment_breakdown.positive / Math.max(stats.total_reviews, 1);\n  score += positiveRate * 30;\n  \n  return Math.round(score);\n}\n\nfunction generateRecommendations(stats) {\n  const recs = [];\n  \n  if (stats.unanswered_count > 5) {\n    recs.push('⚠️ ' + stats.unanswered_count + ' yanıtlanmamış yorum var. Hızlı yanıt müşteri memnuniyetini artırır.');\n  }\n  \n  if (parseFloat(stats.avg_rating) < 4.0) {\n    recs.push('📊 Ortalama puanınız 4.0\\'ın altında. Negatif yorumları analiz edin.');\n  }\n  \n  if (stats.sentiment_breakdown.negative > stats.sentiment_breakdown.positive * 0.2) {\n    recs.push('🔴 Negatif yorum oranı yüksek. Hizmet kalitesini gözden geçirin.');\n  }\n  \n  if (recs.length === 0) {\n    recs.push('✅ Harika gidiyorsunuz! Yorum performansınız çok iyi.');\n  }\n  \n  return recs;\n}\n\nreturn [{ json: report }];"
+            },
+            "id": "generate-report",
+            "name": "Rapor Oluştur",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                1100,
+                600
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $env.REPORT_EMAIL || 'owner@isletme.com' }}",
+                "subject": "=📊 Haftalık Yorum Raporu - {{ $json.business_name }}",
+                "emailType": "html",
+                "message": "=<h1>📊 Yorum Yönetimi Raporu</h1>\n<p>Tarih: {{ $json.report_date }}</p>\n\n<h2>📈 Özet</h2>\n<ul>\n<li>Toplam Yorum: <strong>{{ $json.summary.total_reviews }}</strong></li>\n<li>Ortalama Puan: <strong>{{ $json.summary.average_rating }}/5</strong></li>\n<li>Yanıt Oranı: <strong>{{ $json.summary.response_rate }}</strong></li>\n<li>Sağlık Skoru: <strong>{{ $json.health_score }}/100</strong></li>\n</ul>\n\n<h2>😊 Duygu Analizi</h2>\n<ul>\n<li>Pozitif: {{ $json.sentiment.positive }}</li>\n<li>Nötr: {{ $json.sentiment.neutral }}</li>\n<li>Negatif: {{ $json.sentiment.negative }}</li>\n</ul>\n\n<h2>🌐 Platform Dağılımı</h2>\n<ul>\n<li>Google: {{ $json.platforms.google }}</li>\n<li>TripAdvisor: {{ $json.platforms.tripadvisor }}</li>\n<li>Yelp: {{ $json.platforms.yelp }}</li>\n<li>Facebook: {{ $json.platforms.facebook }}</li>\n</ul>\n\n<h2>💡 Öneriler</h2>\n<ul>\n{{ $json.recommendations.map(r => '<li>' + r + '</li>').join('') }}\n</ul>",
+                "options": {}
+            },
+            "id": "send-report-email",
+            "name": "Rapor Email Gönder",
+            "type": "n8n-nodes-base.emailSend",
+            "position": [
+                1320,
+                600
+            ],
+            "credentials": {
+                "smtp": {
+                    "id": "smtp-creds",
+                    "name": "SMTP"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "days",
+                            "daysInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "daily-sync-trigger",
+            "name": "Günlük Senkronizasyon",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "position": [
+                220,
+                800
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Listeleme Senkronizasyonu\n// Tüm platformlara işletme bilgilerini senkronize et\n\nconst config = {\n  business_name: $env.BUSINESS_NAME,\n  address: $env.BUSINESS_ADDRESS,\n  city: $env.BUSINESS_CITY,\n  phone: $env.BUSINESS_PHONE,\n  website: $env.BUSINESS_WEBSITE,\n  hours: $env.BUSINESS_HOURS, // JSON format\n  categories: $env.BUSINESS_CATEGORIES,\n  description: $env.BUSINESS_DESCRIPTION\n};\n\nconst platforms = [\n  {\n    name: 'Google Business Profile',\n    id: 'google',\n    enabled: !!$env.GOOGLE_BUSINESS_API_KEY,\n    api_url: 'https://mybusiness.googleapis.com/v4'\n  },\n  {\n    name: 'Apple Maps',\n    id: 'apple',\n    enabled: !!$env.APPLE_MAPS_TOKEN,\n    api_url: 'https://maps-api.apple.com'\n  },\n  {\n    name: 'Bing Places',\n    id: 'bing',\n    enabled: !!$env.BING_PLACES_KEY,\n    api_url: 'https://www.bingapis.com/api/v7'\n  },\n  {\n    name: 'Yandex Maps',\n    id: 'yandex',\n    enabled: !!$env.YANDEX_API_KEY,\n    api_url: 'https://api.business.yandex.ru'\n  },\n  {\n    name: 'Foursquare',\n    id: 'foursquare',\n    enabled: !!$env.FOURSQUARE_API_KEY,\n    api_url: 'https://api.foursquare.com/v3'\n  },\n  {\n    name: 'TripAdvisor',\n    id: 'tripadvisor',\n    enabled: !!$env.TRIPADVISOR_API_KEY,\n    api_url: 'https://api.tripadvisor.com'\n  },\n  {\n    name: 'Yelp',\n    id: 'yelp',\n    enabled: !!$env.YELP_API_KEY,\n    api_url: 'https://api.yelp.com/v3'\n  },\n  {\n    name: 'Facebook',\n    id: 'facebook',\n    enabled: !!$env.FACEBOOK_ACCESS_TOKEN,\n    api_url: 'https://graph.facebook.com'\n  },\n  {\n    name: 'HERE Maps',\n    id: 'here',\n    enabled: !!$env.HERE_API_KEY,\n    api_url: 'https://places.ls.hereapi.com'\n  },\n  {\n    name: 'TomTom',\n    id: 'tomtom',\n    enabled: !!$env.TOMTOM_API_KEY,\n    api_url: 'https://api.tomtom.com'\n  },\n  {\n    name: 'Waze',\n    id: 'waze',\n    enabled: !!$env.WAZE_API_KEY,\n    api_url: 'https://www.waze.com/api'\n  }\n];\n\nconst enabledPlatforms = platforms.filter(p => p.enabled);\n\nreturn [{\n  json: {\n    config,\n    platforms: enabledPlatforms,\n    total_platforms: platforms.length,\n    enabled_count: enabledPlatforms.length,\n    sync_timestamp: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "prepare-listing-sync",
+            "name": "Listeleme Senkronizasyonu Hazırla",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                440,
+                800
+            ]
+        }
+    ],
+    "connections": {
+        "Hourly Review Check": {
+            "main": [
+                [
+                    {
+                        "node": "İşletme Konfigürasyonu",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Manual Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "İşletme Konfigürasyonu",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "İşletme Konfigürasyonu": {
+            "main": [
+                [
+                    {
+                        "node": "Google Reviews Çek",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "TripAdvisor Reviews Çek",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Yelp Reviews Çek",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Facebook Reviews Çek",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Reviews Çek": {
+            "main": [
+                [
+                    {
+                        "node": "Yorumları Birleştir",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "TripAdvisor Reviews Çek": {
+            "main": [
+                [
+                    {
+                        "node": "Yorumları Birleştir",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Yelp Reviews Çek": {
+            "main": [
+                [
+                    {
+                        "node": "Yorumları Birleştir",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Facebook Reviews Çek": {
+            "main": [
+                [
+                    {
+                        "node": "Yorumları Birleştir",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Yorumları Birleştir": {
+            "main": [
+                [
+                    {
+                        "node": "Yanıtlanmamış Var mı?",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Rapor Oluştur",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Yanıtlanmamış Var mı?": {
+            "main": [
+                [
+                    {
+                        "node": "Yorumları Ayır",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                []
+            ]
+        },
+        "Yorumları Ayır": {
+            "main": [
+                [
+                    {
+                        "node": "Yorum İşle",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Yorum İşle": {
+            "main": [
+                [
+                    {
+                        "node": "AI Yanıt Oluştur",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Yanıt Oluştur": {
+            "main": [
+                [
+                    {
+                        "node": "Onay Gerekiyor mu?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Onay Gerekiyor mu?": {
+            "main": [
+                [
+                    {
+                        "node": "Slack Onay İste",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Otomatik Yanıt Hazırla",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Otomatik Yanıt Hazırla": {
+            "main": [
+                [
+                    {
+                        "node": "Platforma Göre Yönlendir",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Platforma Göre Yönlendir": {
+            "main": [
+                [
+                    {
+                        "node": "Google'a Yanıt Gönder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "TripAdvisor'a Yanıt Gönder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Facebook'a Yanıt Gönder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google'a Yanıt Gönder": {
+            "main": [
+                [
+                    {
+                        "node": "Google Sheets Log",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "TripAdvisor'a Yanıt Gönder": {
+            "main": [
+                [
+                    {
+                        "node": "Google Sheets Log",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Facebook'a Yanıt Gönder": {
+            "main": [
+                [
+                    {
+                        "node": "Google Sheets Log",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Sheets Log": {
+            "main": [
+                [
+                    {
+                        "node": "Slack Bildirim",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Rapor Oluştur": {
+            "main": [
+                [
+                    {
+                        "node": "Rapor Email Gönder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Günlük Senkronizasyon": {
+            "main": [
+                [
+                    {
+                        "node": "Listeleme Senkronizasyonu Hazırla",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "meta": {
+        "templateId": "grain_local_business_listing_manager_v1",
+        "templateCredsSetupCompleted": false,
+        "version": "1.0.0",
+        "description": "Semrush benzeri yerel işletme listeleme yönetimi - çoklu platform senkronizasyonu, AI destekli yorum yanıtlama, harita sıralaması takibi",
+        "categories": [
+            "local-seo",
+            "review-management",
+            "ai-automation"
+        ],
+        "features": [
+            "Multi-platform review monitoring (Google, TripAdvisor, Yelp, Facebook)",
+            "AI-powered review responses with GPT-4o",
+            "Automatic positive review responses",
+            "Slack approval for negative reviews",
+            "Multi-directory listing sync (11+ platforms)",
+            "Health score and analytics dashboard",
+            "Google Sheets logging",
+            "Weekly email reports"
+        ],
+        "required_credentials": [
+            "Google Business Profile OAuth2",
+            "TripAdvisor Partner API",
+            "Yelp Fusion API",
+            "Facebook Graph API",
+            "OpenAI API",
+            "Slack API",
+            "Google Sheets OAuth2",
+            "SMTP"
+        ],
+        "environment_variables": [
+            "BUSINESS_ID",
+            "BUSINESS_NAME",
+            "BUSINESS_PHONE",
+            "BUSINESS_EMAIL",
+            "BUSINESS_WEBSITE",
+            "BUSINESS_ADDRESS",
+            "BUSINESS_CITY",
+            "BUSINESS_DISTRICT",
+            "GOOGLE_PLACE_ID",
+            "GOOGLE_ACCOUNT_ID",
+            "GOOGLE_LOCATION_ID",
+            "TRIPADVISOR_LOCATION_ID",
+            "YELP_BUSINESS_ID",
+            "FACEBOOK_PAGE_ID",
+            "REVIEW_LOG_SHEET_ID",
+            "SLACK_REVIEW_CHANNEL",
+            "REPORT_EMAIL",
+            "RESPONSE_SIGNATURE"
+        ]
+    }
+}

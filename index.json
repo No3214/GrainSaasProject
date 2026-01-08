@@ -284,13 +284,26 @@
             "file": "Grain_SEO_Engine_v1.json",
             "category": "SEO",
             "tier": "High"
+        },
+        {
+            "name": "Local Business Listing Manager v1",
+            "file": "templates/local-seo/Grain_Local_Business_Listing_Manager_v1.json",
+            "category": "Local SEO",
+            "tier": "Critical",
+            "features": [
+                "Multi-platform review monitoring (Google, TripAdvisor, Yelp, Facebook)",
+                "AI-powered review responses with GPT-4o",
+                "11+ directory listing sync",
+                "Health score analytics",
+                "Slack approval for negative reviews"
+            ]
         }
     ],
     "statistics": {
-        "critical_tier": 23,
+        "critical_tier": 24,
         "high_tier": 16,
         "medium_tier": 3,
-        "total": 42,
+        "total": 43,
         "chains": 4
     }
 }
