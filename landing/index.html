@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grain AI - Yerel İşletme Otomasyon Platformu</title>
+    <meta name="description" content="AI destekli yerel işletme yönetimi. Yorum yanıtlama, listeleme senkronizasyonu ve harita sıralaması takibi tek platformda.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 1: HERO
+         Job: Get email or get scroll
+    ════════════════════════════════════════════════════════════════════ -->
+    <section id="hero" class="hero">
+        <div class="hero-bg"></div>
+        <nav class="nav">
+            <div class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Grain<span class="logo-accent">AI</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Özellikler</a>
+                <a href="#pricing">Fiyatlandırma</a>
+                <a href="#testimonials">Referanslar</a>
+            </div>
+            <a href="#cta" class="nav-cta">Hemen Başla →</a>
+        </nav>
+        
+        <div class="hero-content">
+            <div class="eyebrow">
+                <span class="eyebrow-icon">🚀</span>
+                <span>Türkiye'nin #1 Yerel SEO Otomasyon Platformu</span>
+            </div>
+            
+            <h1 class="headline">
+                Yorumlarınıza <span class="gradient-text">AI Yanıt Versin</span><br>
+                Siz İşinize Odaklanın
+            </h1>
+            
+            <p class="subheadline">
+                Google, TripAdvisor, Yelp ve 11+ platformdaki listelerinizi<br>
+                tek panelden yönetin. AI asistanınız 7/24 çalışsın.
+            </p>
+            
+            <form class="hero-form" id="hero-form">
+                <input type="email" placeholder="E-posta adresiniz" required>
+                <button type="submit">
+                    <span>Ücretsiz Deneyin</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </form>
+            
+            <div class="trust-signals">
+                <div class="trust-item">
+                    <span class="trust-icon">✓</span>
+                    <span>Kredi kartı gerekmez</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">✓</span>
+                    <span>14 gün ücretsiz</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">✓</span>
+                    <span>İstediğiniz zaman iptal</span>
+                </div>
+            </div>
+            
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-number">2,500+</span>
+                    <span class="stat-label">Aktif İşletme</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-number">50K+</span>
+                    <span class="stat-label">Yanıtlanan Yorum</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-number">4.8★</span>
+                    <span class="stat-label">Kullanıcı Puanı</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="hero-visual">
+            <div class="dashboard-preview">
+                <div class="preview-header">
+                    <div class="preview-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="preview-title">Grain Dashboard</span>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-card review-card">
+                        <div class="review-header">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=mehmet" alt="avatar" class="review-avatar">
+                            <div class="review-info">
+                                <span class="review-name">Mehmet Y.</span>
+                                <span class="review-rating">★★★★★</span>
+                            </div>
+                            <span class="review-badge google">Google</span>
+                        </div>
+                        <p class="review-text">"Harika bir deneyimdi! Yemekler çok lezzetli..."</p>
+                        <div class="ai-response">
+                            <span class="ai-badge">🤖 AI Yanıt</span>
+                            <p>"Değerli Mehmet Bey, güzel yorumunuz için teşekkür ederiz! 🙏"</p>
+                        </div>
+                    </div>
+                    <div class="preview-metrics">
+                        <div class="metric">
+                            <span class="metric-value">94%</span>
+                            <span class="metric-label">Yanıt Oranı</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value">4.6★</span>
+                            <span class="metric-label">Ortalama</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value">↑12%</span>
+                            <span class="metric-label">Bu Ay</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 2: SUCCESS (Modal - Hidden by default)
+         Job: Kill buyer's remorse
+    ════════════════════════════════════════════════════════════════════ -->
+    <div id="success-modal" class="success-modal hidden">
+        <div class="success-content">
+            <div class="success-checkmark">
+                <svg viewBox="0 0 52 52">
+                    <circle cx="26" cy="26" r="25" fill="none"/>
+                    <path fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <h2>Harika! Kayıt Başarılı 🎉</h2>
+            <p>E-postanızı kontrol edin. Size hemen ulaşacağız.</p>
+            <div class="success-deliverables">
+                <h4>Şimdi alacaklarınız:</h4>
+                <ul>
+                    <li>✅ 14 günlük ücretsiz erişim</li>
+                    <li>✅ Tüm platformlara bağlantı kurulumu</li>
+                    <li>✅ AI asistan aktivasyonu</li>
+                    <li>✅ 1-1 onboarding görüşmesi</li>
+                </ul>
+            </div>
+            <button class="success-close" onclick="closeSuccessModal()">Tamam, Anladım</button>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 3: PROBLEM-AGITATE
+         Job: Make status quo painful
+    ════════════════════════════════════════════════════════════════════ -->
+    <section id="problem" class="problem-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">❌ Tanıdık Geliyor mu?</span>
+                <h2>Yorumlarınız <span class="text-red">Kayboluyorsa</span>, Müşterileriniz de Kaybolur</h2>
+            </div>
+            
+            <div class="problems-grid">
+                <div class="problem-card" data-aos="fade-up">
+                    <div class="problem-icon">😫</div>
+                    <h3>Yorumları Takip Edemiyorsunuz</h3>
+                    <p>Google'da 5 yorum, TripAdvisor'da 3, Facebook'ta 7... Her sabah 6 farklı platform açmak zorunda kalıyorsunuz.</p>
+                    <div class="problem-agitate">
+                        <span class="agitate-arrow">→</span>
+                        <span>Her kaçırılan yorum = Kaybedilen potansiyel müşteri</span>
+                    </div>
+                </div>
+                
+                <div class="problem-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="problem-icon">⏰</div>
+                    <h3>Yanıt Yazmak Saatler Alıyor</h3>
+                    <p>Her yoruma özel, profesyonel ve samimi bir yanıt yazmak günde en az 2 saatinizi çalıyor.</p>
+                    <div class="problem-agitate">
+                        <span class="agitate-arrow">→</span>
+                        <span>Yılda 730 saat = 30 tam iş günü boşa gidiyor</span>
+                    </div>
+                </div>
+                
+                <div class="problem-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="problem-icon">📉</div>
+                    <h3>Negatif Yorumlar Rakiplere Gidiyor</h3>
+                    <p>Yanıtlanmayan olumsuz yorumlar harita sıralamanızı düşürüyor. Rakipleriniz üste çıkıyor.</p>
+                    <div class="problem-agitate">
+                        <span class="agitate-arrow">→</span>
+                        <span>1 yıldız düşüş = %9 daha az müşteri</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="personal-transition">
+                <div class="transition-line"></div>
+                <p>
+                    Biz de aynı sorunları yaşadık. <strong>1000+ işletme</strong> ile konuştuk.<br>
+                    Sonunda bir çözüm ürettik...
+                </p>
+                <div class="transition-arrow">↓</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 4: VALUE STACK
+         Job: Make saying no feel stupid
+    ════════════════════════════════════════════════════════════════════ -->
+    <section id="pricing" class="pricing-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">💎 Değer Paketi</span>
+                <h2>Tek Bir Fiyat, <span class="gradient-text">Sınırsız Değer</span></h2>
+                <p>İhtiyacınız olan her şey tek pakette. Gizli ücret yok.</p>
+            </div>
+            
+            <div class="value-stack">
+                <div class="value-tier tier-1">
+                    <div class="tier-header">
+                        <span class="tier-icon">🤖</span>
+                        <span class="tier-name">AI Yorum Yönetimi</span>
+                    </div>
+                    <ul class="tier-features">
+                        <li>Sınırsız AI yorum yanıtı</li>
+                        <li>6 platforma bağlantı</li>
+                        <li>Otomatik duygu analizi</li>
+                        <li>Negatif yorum alarmları</li>
+                    </ul>
+                    <div class="tier-value">
+                        <span class="value-was">Değeri: ₺2.500/ay</span>
+                    </div>
+                </div>
+                
+                <div class="value-tier tier-2">
+                    <div class="tier-header">
+                        <span class="tier-icon">📍</span>
+                        <span class="tier-name">Listeleme Senkronizasyonu</span>
+                    </div>
+                    <ul class="tier-features">
+                        <li>11+ dizin otomasyonu</li>
+                        <li>NAP tutarlılık kontrolü</li>
+                        <li>Duplicate tespit ve silme</li>
+                        <li>Anlık bilgi güncelleme</li>
+                    </ul>
+                    <div class="tier-value">
+                        <span class="value-was">Değeri: ₺1.800/ay</span>
+                    </div>
+                </div>
+                
+                <div class="value-tier tier-3">
+                    <div class="tier-header">
+                        <span class="tier-icon">📊</span>
+                        <span class="tier-name">Harita Sıralaması Takibi</span>
+                    </div>
+                    <ul class="tier-features">
+                        <li>Grid-based rank tracking</li>
+                        <li>Rakip analizi (5 rakip)</li>
+                        <li>Anahtar kelime izleme</li>
+                        <li>Local Pack takibi</li>
+                    </ul>
+                    <div class="tier-value">
+                        <span class="value-was">Değeri: ₺1.200/ay</span>
+                    </div>
+                </div>
+                
+                <div class="value-tier tier-4">
+                    <div class="tier-header">
+                        <span class="tier-icon">🎁</span>
+                        <span class="tier-name">Bonus: Raporlama & Destek</span>
+                    </div>
+                    <ul class="tier-features">
+                        <li>Haftalık PDF raporlar</li>
+                        <li>WhatsApp destek hattı</li>
+                        <li>1-1 strateji görüşmesi</li>
+                        <li>Kurulum desteği</li>
+                    </ul>
+                    <div class="tier-value">
+                        <span class="value-was">Değeri: ₺800/ay</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="total-value">
+                <div class="total-line">
+                    <span class="total-label">Toplam Değer</span>
+                    <span class="total-amount strikethrough">₺6.300/ay</span>
+                </div>
+                <div class="your-price">
+                    <span class="price-label">Sizin Fiyatınız</span>
+                    <div class="price-display">
+                        <span class="currency">₺</span>
+                        <span class="amount">499</span>
+                        <span class="period">/ay</span>
+                    </div>
+                    <span class="savings">%92 tasarruf!</span>
+                </div>
+            </div>
+            
+            <a href="#cta" class="pricing-cta">
+                <span>14 Gün Ücretsiz Başla</span>
+                <span class="cta-arrow">→</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 5: SOCIAL PROOF
+         Job: Let others convince them
+    ════════════════════════════════════════════════════════════════════ -->
+    <section id="testimonials" class="testimonials-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">⭐ Müşteri Hikayeleri</span>
+                <h2>2,500+ İşletme <span class="gradient-text">Grain ile Büyüyor</span></h2>
+            </div>
+            
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        <div class="stars">★★★★★</div>
+                        <p class="testimonial-text">
+                            "Günde 3 saat harcadığım yorum yanıtlama işi artık <strong>tamamen otomatik</strong>. 
+                            Üstelik AI'ın yazdığı yanıtlar benimkilerden daha profesyonel!"
+                        </p>
+                        <div class="testimonial-result">
+                            <span class="result-icon">📈</span>
+                            <span>Google puanı 3.9'dan <strong>4.6</strong>'ya çıktı</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-author">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=ahmet" alt="Ahmet" class="author-avatar">
+                        <div class="author-info">
+                            <span class="author-name">Ahmet K.</span>
+                            <span class="author-title">Kebapçı Ahmet Usta, Kadıköy</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="testimonial-card featured">
+                    <div class="featured-badge">⚡ En Popüler</div>
+                    <div class="testimonial-content">
+                        <div class="stars">★★★★★</div>
+                        <p class="testimonial-text">
+                            "5 şubemiz var. Her biri farklı platformda listelenmiş. Grain sayesinde 
+                            <strong>hepsini tek panelden</strong> yönetiyoruz. Aylık 40 saat tasarruf!"
+                        </p>
+                        <div class="testimonial-result">
+                            <span class="result-icon">🎯</span>
+                            <span>Harita aramalarda <strong>Top 3</strong>'e girdi</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-author">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=zeynep" alt="Zeynep" class="author-avatar">
+                        <div class="author-info">
+                            <span class="author-name">Zeynep T.</span>
+                            <span class="author-title">Pasta & More Zinciri, İstanbul</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        <div class="stars">★★★★★</div>
+                        <p class="testimonial-text">
+                            "Negatif yorumlara anında müdahale edebiliyoruz. Müşteri Slack'ten onay veriyor, 
+                            5 dakikada profesyonel yanıt gidiyor. <strong>Kriz yönetimi artık çok kolay.</strong>"
+                        </p>
+                        <div class="testimonial-result">
+                            <span class="result-icon">💬</span>
+                            <span>Yanıt süresi <strong>2 saatten 15 dk</strong>'ya düştü</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-author">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=can" alt="Can" class="author-avatar">
+                        <div class="author-info">
+                            <span class="author-name">Can B.</span>
+                            <span class="author-title">Boutique Hotel, Çeşme</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="logos-section">
+                <p class="logos-title">Güvenilir Markalar</p>
+                <div class="logos-strip">
+                    <span class="logo-item">🍕 PizzaLab</span>
+                    <span class="logo-item">🏨 Marina Otel</span>
+                    <span class="logo-item">☕ Kahve Durağı</span>
+                    <span class="logo-item">🍣 Sushi Master</span>
+                    <span class="logo-item">🏠 Emlak Plus</span>
+                    <span class="logo-item">💇 Salon Style</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 6: TRANSFORMATION
+         Job: Make outcome tangible
+    ════════════════════════════════════════════════════════════════════ -->
+    <section id="transformation" class="transformation-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">🚀 Dönüşüm Yolculuğu</span>
+                <h2>30 Günde <span class="gradient-text">Harita Lideri</span> Olun</h2>
+            </div>
+            
+            <div class="transformation-timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker">
+                        <span class="marker-number">1</span>
+                        <span class="marker-label">Hafta</span>
+                    </div>
+                    <div class="timeline-content">
+                        <h3>⚡ Hızlı Başlangıç</h3>
+                        <p>Tüm platformlarınız bağlanır. İlk AI yanıtlarınız gönderilir. Eski yorumlar bile yanıtlanır.</p>
+                        <div class="timeline-metric">
+                            <span class="metric-badge">+50 yorum yanıtı</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-connector"></div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-marker">
+                        <span class="marker-number">2</span>
+                        <span class="marker-label">Hafta</span>
+                    </div>
+                    <div class="timeline-content">
+                        <h3>📈 Bileşik Etki</h3>
+                        <p>Yanıt oranınız %95'i aşar. Google algoritması sizi ödüllendirmeye başlar. Puanınız yükselir.</p>
+                        <div class="timeline-metric">
+                            <span class="metric-badge">+0.3 puan artış</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-connector"></div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-marker">
+                        <span class="marker-number">3</span>
+                        <span class="marker-label">Hafta</span>
+                    </div>
+                    <div class="timeline-content">
+                        <h3>🎯 Rekabet Avantajı</h3>
+                        <p>Listeleriniz senkronize. NAP tutarlılığınız %100. Rakipleriniz hala manuel uğraşırken siz öndesiniz.</p>
+                        <div class="timeline-metric">
+                            <span class="metric-badge">Top 5 sıralama</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-connector"></div>
+                
+                <div class="timeline-item final">
+                    <div class="timeline-marker">
+                        <span class="marker-number">4</span>
+                        <span class="marker-label">Hafta</span>
+                    </div>
+                    <div class="timeline-content">
+                        <h3>🏆 10x Büyüme</h3>
+                        <p>Harita aramalarında ilk 3'tesiniz. Yeni müşteri akışı başlar. Otomasyon size pasif gelir sağlar.</p>
+                        <div class="timeline-metric highlight">
+                            <span class="metric-badge">%40 daha fazla müşteri</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 7: SECONDARY CTA
+         Job: Catch the scrollers
+    ════════════════════════════════════════════════════════════════════ -->
+    <section id="cta" class="cta-section">
+        <div class="container">
+            <div class="cta-box">
+                <div class="avatar-stack">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=user1" alt="user">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=user2" alt="user">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=user3" alt="user">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=user4" alt="user">
+                    <span class="avatar-more">+2.4K</span>
+                </div>
+                
+                <h2 class="cta-headline">
+                    Yorumlarınızı <span class="gradient-text">AI'a Bırakmaya</span> Hazır mısınız?
+                </h2>
+                
+                <p class="cta-subtext">
+                    14 gün ücretsiz deneyin. Kredi kartı gerekmez.<br>
+                    İstediğiniz zaman iptal edin.
+                </p>
+                
+                <form class="cta-form" id="cta-form">
+                    <input type="email" placeholder="E-posta adresiniz" required>
+                    <button type="submit">
+                        <span>Evet, Başlamak İstiyorum!</span>
+                        <span class="btn-arrow">🚀</span>
+                    </button>
+                </form>
+                
+                <div class="cta-guarantee">
+                    <span class="guarantee-icon">🛡️</span>
+                    <span>30 gün para iade garantisi. Risk yok.</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SECTION 8: FOOTER
+         Job: Professional legitimacy
+    ════════════════════════════════════════════════════════════════════ -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-main">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <span class="logo-icon">⚡</span>
+                        <span class="logo-text">Grain<span class="logo-accent">AI</span></span>
+                    </div>
+                    <p class="footer-tagline">AI destekli yerel işletme otomasyon platformu</p>
+                    <div class="footer-social">
+                        <a href="#" class="social-link">𝕏</a>
+                        <a href="#" class="social-link">in</a>
+                        <a href="#" class="social-link">▶</a>
+                        <a href="#" class="social-link">📸</a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Ürün</h4>
+                        <a href="#">Özellikler</a>
+                        <a href="#">Fiyatlandırma</a>
+                        <a href="#">Entegrasyonlar</a>
+                        <a href="#">API</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Kaynaklar</h4>
+                        <a href="#">Blog</a>
+                        <a href="#">Rehberler</a>
+                        <a href="#">Yardım Merkezi</a>
+                        <a href="#">Webinarlar</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Şirket</h4>
+                        <a href="#">Hakkımızda</a>
+                        <a href="#">Kariyer</a>
+                        <a href="#">İletişim</a>
+                        <a href="#">Basın</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-legal">
+                    <a href="#">Gizlilik Politikası</a>
+                    <a href="#">Kullanım Koşulları</a>
+                    <a href="#">KVKK</a>
+                </div>
+                <p class="copyright">© 2024 Grain AI. Tüm hakları saklıdır.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Form submission handling
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                document.getElementById('success-modal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+        });
+
+        function closeSuccessModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Intersection Observer for animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.problem-card, .value-tier, .testimonial-card, .timeline-item').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('.nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>
