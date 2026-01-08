@@ -7,8 +7,40 @@
       "name": "Orchestrator Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
+      "position": [
+        200,
+        400
+      ],
       "webhookId": "ai-orchestrator-trigger"
+    },
+    {
+      "parameters": {
+        "options": {
+          "title": "Grain AI Assistant",
+          "subtitle": "Agentic Orchestration Engine"
+        }
+      },
+      "id": "chat-ui-trigger",
+      "name": "Chat UI",
+      "type": "n8n-nodes-base.chatTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdKey": "={{ $json.sessionId || 'default' }}"
+      },
+      "id": "chat-memory",
+      "name": "Window Chat Memory",
+      "type": "n8n-nodes-base.windowChatInMemory",
+      "typeVersion": 1,
+      "position": [
+        400,
+        100
+      ]
     },
     {
       "parameters": {
@@ -25,17 +57,23 @@
       "name": "Scheduled Task Check",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 600]
+      "position": [
+        200,
+        600
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Task Router & Context Builder\n// Determines which AI agents to invoke based on task type\n\nconst input = $input.first().json;\n\n// Define available agents and their capabilities\nconst agentRegistry = {\n  lead_enrichment: {\n    name: 'Lead Enrichment Agent',\n    capabilities: ['company_research', 'contact_lookup', 'social_profiles', 'technographics'],\n    priority: 1,\n    timeout: 30000,\n    requiresApproval: false\n  },\n  content_generator: {\n    name: 'Content Generation Agent',\n    capabilities: ['email_copy', 'social_posts', 'ad_copy', 'blog_outlines'],\n    priority: 2,\n    timeout: 60000,\n    requiresApproval: true\n  },\n  sentiment_analyzer: {\n    name: 'Sentiment Analysis Agent',\n    capabilities: ['social_listening', 'review_analysis', 'brand_monitoring'],\n    priority: 2,\n    timeout: 20000,\n    requiresApproval: false\n  },\n  outreach_personalizer: {\n    name: 'Outreach Personalization Agent',\n    capabilities: ['email_personalization', 'message_customization', 'timing_optimization'],\n    priority: 3,\n    timeout: 45000,\n    requiresApproval: true\n  },\n  data_analyst: {\n    name: 'Data Analysis Agent',\n    capabilities: ['trend_analysis', 'forecasting', 'anomaly_detection', 'reporting'],\n    priority: 1,\n    timeout: 90000,\n    requiresApproval: false\n  },\n  crm_updater: {\n    name: 'CRM Update Agent',\n    capabilities: ['contact_update', 'deal_creation', 'activity_logging', 'task_creation'],\n    priority: 4,\n    timeout: 15000,\n    requiresApproval: false\n  }\n};\n\n// Parse task and determine required agents\nconst taskType = input.task_type || input.type || 'general';\nconst taskData = input.data || input;\nconst urgency = input.urgency || 'normal';\n\n// Build execution plan based on task type\nlet executionPlan = [];\n\nswitch (taskType) {\n  case 'new_lead':\n    executionPlan = [\n      { agent: 'lead_enrichment', input: taskData, parallel: true },\n      { agent: 'sentiment_analyzer', input: { query: taskData.company }, parallel: true },\n      { agent: 'outreach_personalizer', input: taskData, parallel: false, dependsOn: ['lead_enrichment', 'sentiment_analyzer'] },\n      { agent: 'content_generator', input: { type: 'email', context: taskData }, parallel: false, dependsOn: ['outreach_personalizer'] },\n      { agent: 'crm_updater', input: taskData, parallel: false, dependsOn: ['content_generator'] }\n    ];\n    break;\n    \n  case 'content_campaign':\n    executionPlan = [\n      { agent: 'data_analyst', input: { type: 'audience_analysis', data: taskData }, parallel: false },\n      { agent: 'content_generator', input: taskData, parallel: false, dependsOn: ['data_analyst'] },\n      { agent: 'outreach_personalizer', input: taskData, parallel: false, dependsOn: ['content_generator'] }\n    ];\n    break;\n    \n  case 'churn_prevention':\n    executionPlan = [\n      { agent: 'sentiment_analyzer', input: taskData, parallel: true },\n      { agent: 'data_analyst', input: { type: 'churn_analysis', customer: taskData }, parallel: true },\n      { agent: 'content_generator', input: { type: 'win_back', context: taskData }, parallel: false, dependsOn: ['sentiment_analyzer', 'data_analyst'] },\n      { agent: 'crm_updater', input: { action: 'log_intervention', data: taskData }, parallel: false, dependsOn: ['content_generator'] }\n    ];\n    break;\n    \n  case 'analytics_report':\n    executionPlan = [\n      { agent: 'data_analyst', input: taskData, parallel: false }\n    ];\n    break;\n    \n  default:\n    // General task - try to infer required agents\n    executionPlan = [\n      { agent: 'data_analyst', input: taskData, parallel: false }\n    ];\n}\n\n// Build context graph for agent coordination\nconst contextGraph = {\n  taskId: `task-${Date.now()}`,\n  taskType,\n  urgency,\n  createdAt: new Date().toISOString(),\n  executionPlan,\n  agentRegistry,\n  originalInput: input,\n  requiresHumanApproval: executionPlan.some(step => \n    agentRegistry[step.agent]?.requiresApproval\n  )\n};\n\nreturn [{ json: contextGraph }];"
+        "jsCode": "// Task Router & Context Builder\n// Determines which AI agents to invoke based on task type\n\nconst input = $input.first().json;\n\n// Define available agents and their capabilities\nconst agentRegistry = {\n  lead_enrichment: {\n    name: 'Lead Enrichment Agent',\n    capabilities: ['company_research', 'contact_lookup', 'social_profiles', 'technographics'],\n    priority: 1,\n    timeout: 30000,\n    requiresApproval: false\n  },\n  content_generator: {\n    name: 'Content Generation Agent',\n    capabilities: ['email_copy', 'social_posts', 'ad_copy', 'blog_outlines'],\n    priority: 2,\n    timeout: 60000,\n    requiresApproval: true\n  },\n  sentiment_analyzer: {\n    name: 'Sentiment Analysis Agent',\n    capabilities: ['social_listening', 'review_analysis', 'brand_monitoring'],\n    priority: 2,\n    timeout: 20000,\n    requiresApproval: false\n  },\n  outreach_personalizer: {\n    name: 'Outreach Personalization Agent',\n    capabilities: ['email_personalization', 'message_customization', 'timing_optimization'],\n    priority: 3,\n    timeout: 45000,\n    requiresApproval: true\n  },\n  data_analyst: {\n    name: 'Data Analysis Agent',\n    capabilities: ['trend_analysis', 'forecasting', 'anomaly_detection', 'reporting'],\n    priority: 1,\n    timeout: 90000,\n    requiresApproval: false\n  },\n  crm_updater: {\n    name: 'CRM Update Agent',\n    capabilities: ['contact_update', 'deal_creation', 'activity_logging', 'task_creation'],\n    priority: 4,\n    timeout: 15000,\n    requiresApproval: false\n  }\n};\n\n// Handle Chat Input vs Webhook Input\nconst chatMessage = input.chatInput || input.message || \"\";\nconst taskType = input.task_type || input.type || (chatMessage ? 'new_lead' : 'general');\nconst taskData = chatMessage ? { goal: chatMessage } : (input.data || input);\nconst urgency = input.urgency || 'normal';\n\n// Build execution plan based on task type\nlet executionPlan = [];\n\nswitch (taskType) {\n  case 'new_lead':\n    executionPlan = [\n      { agent: 'lead_enrichment', input: taskData, parallel: true },\n      { agent: 'sentiment_analyzer', input: { query: taskData.company }, parallel: true },\n      { agent: 'outreach_personalizer', input: taskData, parallel: false, dependsOn: ['lead_enrichment', 'sentiment_analyzer'] },\n      { agent: 'content_generator', input: { type: 'email', context: taskData }, parallel: false, dependsOn: ['outreach_personalizer'] },\n      { agent: 'crm_updater', input: taskData, parallel: false, dependsOn: ['content_generator'] }\n    ];\n    break;\n    \n  case 'content_campaign':\n    executionPlan = [\n      { agent: 'data_analyst', input: { type: 'audience_analysis', data: taskData }, parallel: false },\n      { agent: 'content_generator', input: taskData, parallel: false, dependsOn: ['data_analyst'] },\n      { agent: 'outreach_personalizer', input: taskData, parallel: false, dependsOn: ['content_generator'] }\n    ];\n    break;\n    \n  case 'churn_prevention':\n    executionPlan = [\n      { agent: 'sentiment_analyzer', input: taskData, parallel: true },\n      { agent: 'data_analyst', input: { type: 'churn_analysis', customer: taskData }, parallel: true },\n      { agent: 'content_generator', input: { type: 'win_back', context: taskData }, parallel: false, dependsOn: ['sentiment_analyzer', 'data_analyst'] },\n      { agent: 'crm_updater', input: { action: 'log_intervention', data: taskData }, parallel: false, dependsOn: ['content_generator'] }\n    ];\n    break;\n    \n  case 'analytics_report':\n    executionPlan = [\n      { agent: 'data_analyst', input: taskData, parallel: false }\n    ];\n    break;\n    \n  default:\n    // General task - try to infer required agents\n    executionPlan = [\n      { agent: 'data_analyst', input: taskData, parallel: false }\n    ];\n}\n\n// Build context graph for agent coordination\nconst contextGraph = {\n  taskId: `task-${Date.now()}`,\n  taskType,\n  urgency,\n  createdAt: new Date().toISOString(),\n  executionPlan,\n  agentRegistry,\n  originalInput: input,\n  requiresHumanApproval: executionPlan.some(step => \n    agentRegistry[step.agent]?.requiresApproval\n  )\n};\n\nreturn [{ json: contextGraph }];"
       },
       "id": "task-router",
       "name": "Task Router & Context Builder",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [450, 500]
+      "position": [
+        450,
+        500
+      ]
     },
     {
       "parameters": {
@@ -61,7 +99,10 @@
       "name": "Lead Enrichment Agent",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ]
     },
     {
       "parameters": {
@@ -87,7 +128,10 @@
       "name": "Sentiment Analysis Agent",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [700, 500]
+      "position": [
+        700,
+        500
+      ]
     },
     {
       "parameters": {
@@ -113,7 +157,10 @@
       "name": "Content Generation Agent",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [950, 400]
+      "position": [
+        950,
+        400
+      ]
     },
     {
       "parameters": {
@@ -139,7 +186,10 @@
       "name": "Outreach Personalization Agent",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [950, 600]
+      "position": [
+        950,
+        600
+      ]
     },
     {
       "parameters": {
@@ -165,7 +215,10 @@
       "name": "Data Analysis Agent",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [700, 700]
+      "position": [
+        700,
+        700
+      ]
     },
     {
       "parameters": {
@@ -175,7 +228,10 @@
       "name": "Result Aggregator & Decision Engine",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 500]
+      "position": [
+        1200,
+        500
+      ]
     },
     {
       "parameters": {
@@ -202,7 +258,10 @@
       "name": "Needs Human Approval?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.1,
-      "position": [1450, 500]
+      "position": [
+        1450,
+        500
+      ]
     },
     {
       "parameters": {
@@ -214,7 +273,10 @@
       "name": "Request Human Approval",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [1700, 400]
+      "position": [
+        1700,
+        400
+      ]
     },
     {
       "parameters": {
@@ -224,7 +286,10 @@
       "name": "Execute Actions",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1700, 600]
+      "position": [
+        1700,
+        600
+      ]
     },
     {
       "parameters": {
@@ -241,7 +306,10 @@
       "name": "Update CRM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1950, 500]
+      "position": [
+        1950,
+        500
+      ]
     },
     {
       "parameters": {
@@ -267,7 +335,10 @@
       "name": "Send Email Action",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1950, 700]
+      "position": [
+        1950,
+        700
+      ]
     },
     {
       "parameters": {
@@ -297,7 +368,10 @@
       "name": "Log Execution",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
-      "position": [2200, 600]
+      "position": [
+        2200,
+        600
+      ]
     },
     {
       "parameters": {
@@ -309,7 +383,10 @@
       "name": "Slack Completion Notice",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [2200, 400]
+      "position": [
+        2200,
+        400
+      ]
     },
     {
       "parameters": {
@@ -320,10 +397,24 @@
       "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2200, 800]
+      "position": [
+        2200,
+        800
+      ]
     }
   ],
   "connections": {
+    "Chat UI": {
+      "main": [
+        [
+          {
+            "node": "Task Router & Context Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Orchestrator Trigger": {
       "main": [
         [
