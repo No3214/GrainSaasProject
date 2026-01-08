@@ -21,9 +21,19 @@ Grain SaaS 2.0, küçük ve orta ölçekli işletmeler için tasarlanmış, mali
 - **Kullanım Kolaylığı:** Chat UI üzerinden asistanla doğal dilde iletişim.
 - **Güvenli Yedekleme:** Tüm sistemin Google Drive ve GitHub üzerinde güvenli senkronizasyonu.
 
-## Kurulum ve Kullanım
-1. `n8n start` komutu ile yerel sunucunuzu başlatın.
-2. `templates/pro/Grain_Agentic_AI_Orchestrator_v2_Pro.json` dosyasını n8n'e aktarın.
+## Kurulum ve Kullanım (Otomatik & Manuel)
+
+### 🚀 Yöntem 1: Tam Otomatik (Önerilen)
+Bu proje, 120+ workflow'u tek seferde yüklemek için **özel scriptler** içerir.
+1. `scripts/node_import_v2.js` dosyasını çalıştırarak API üzerinden toplu yükleme yapabilirsiniz.
+   ```bash
+   node scripts/node_import_v2.js
+   ```
+
+### 🛠️ Yöntem 2: Manuel Yükleme
+Eğer sadece belirli dosyaları yüklemek isterseniz:
+1. `templates/pro/Grain_Agentic_AI_Orchestrator_v2_Pro.json` dosyasını n8n'e aktarın.
+2. (Sorun yaşarsanız `MANUEL_KURULUM` klasöründeki FIX dosyalarını kullanın).
 3. OpenAI API anahtarınızı `Credentials` kısmına ekleyin.
 4. **Chat UI** kutucuğuna tıklayıp **Open Chat** diyerek asistanınızla konuşmaya başlayın.
 
