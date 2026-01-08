@@ -297,13 +297,27 @@
                 "Health score analytics",
                 "Slack approval for negative reviews"
             ]
+        },
+        {
+            "name": "Real Estate Land Showcase v1",
+            "file": "templates/real-estate/Grain_Real_Estate_Land_Showcase_v1.json",
+            "category": "Real Estate",
+            "tier": "Critical",
+            "features": [
+                "Mapbox satellite imagery (3 zoom levels)",
+                "GPT-4o marketing text generation",
+                "Google Earth KML export",
+                "Multi-platform map links",
+                "Professional HTML report with QR code",
+                "TKGM Parsel integration"
+            ]
         }
     ],
     "statistics": {
-        "critical_tier": 24,
+        "critical_tier": 25,
         "high_tier": 16,
         "medium_tier": 3,
-        "total": 43,
+        "total": 44,
         "chains": 4
     }
 }
