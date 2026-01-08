@@ -12,9 +12,9 @@ const templatesDir = path.join(__dirname, '..', 'templates');
 function postWorkflow(workflowData, filename) {
     return new Promise((resolve, reject) => {
         // Clean up data for import
-        // API doesn't allow 'tags' to be sent directly on create/update usually, or it expects IDs. 
-        // Best to omit for simple import.
-        // Also ensure settings exists.
+        const nodes = workflowData.nodes || [];
+        console.log(`Payload check: ${filename} has ${nodes.length} nodes.`);
+
         const payload = JSON.stringify({
             name: workflowData.name,
             nodes: workflowData.nodes || [],
